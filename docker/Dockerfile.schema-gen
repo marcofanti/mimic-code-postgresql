@@ -1,0 +1,26 @@
+# Dockerfile.schema-gen
+# One-shot image that creates the MIMIC-IV 3.1 schemas
+# (mimiciv_hosp, mimiciv_icu, mimiciv_derived) in an existing PostgreSQL instance.
+#
+# Build:
+#   docker build -f docker/Dockerfile.schema-gen -t mimic-schema-gen .
+#
+# Run (against a running mimic-db container on the default bridge network):
+#   docker run --rm \
+#     -e PGHOST=<db-host> \
+#     -e PGUSER=mimicuser \
+#     -e PGPASSWORD=mimicpass \
+#     -e PGDATABASE=mimiciv \
+#     mimic-schema-gen
+
+FROM postgres:17
+
+ENV PGHOST=localhost \
+    PGUSER=mimicuser \
+    PGPASSWORD=mimicpass \
+    PGDATABASE=mimiciv
+
+COPY postgres_buid/create.sql /app/create.sql
+WORKDIR /app
+
+CMD ["psql", "-f", "create.sql"]

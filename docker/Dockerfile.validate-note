@@ -1,0 +1,26 @@
+# Dockerfile.validate-note
+# One-shot image that validates row counts for all mimiciv_note tables
+# against expected values.
+#
+# Build:
+#   docker build -f docker/Dockerfile.validate-note -t mimic-validate-note .
+#
+# Run:
+#   docker run --rm \
+#     -e PGHOST=<db-host> \
+#     -e PGUSER=mimicuser \
+#     -e PGPASSWORD=mimicpass \
+#     -e PGDATABASE=mimiciv \
+#     mimic-validate-note
+
+FROM postgres:17
+
+ENV PGHOST=localhost \
+    PGUSER=mimicuser \
+    PGPASSWORD=mimicpass \
+    PGDATABASE=mimiciv
+
+COPY postgres_build_note/validate.sql /app/validate.sql
+WORKDIR /app
+
+CMD ["psql", "-f", "validate.sql"]

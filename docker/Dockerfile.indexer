@@ -1,0 +1,26 @@
+# Dockerfile.indexer
+# One-shot image that creates indexes on MIMIC-IV tables after data loading.
+# Run after mimic-loader has completed successfully.
+#
+# Build:
+#   docker build -f docker/Dockerfile.indexer -t mimic-indexer .
+#
+# Run:
+#   docker run --rm \
+#     -e PGHOST=<db-host> \
+#     -e PGUSER=mimicuser \
+#     -e PGPASSWORD=mimicpass \
+#     -e PGDATABASE=mimiciv \
+#     mimic-indexer
+
+FROM postgres:17
+
+ENV PGHOST=localhost \
+    PGUSER=mimicuser \
+    PGPASSWORD=mimicpass \
+    PGDATABASE=mimiciv
+
+COPY postgres_buid/index.sql /app/index.sql
+WORKDIR /app
+
+CMD ["psql", "-f", "index.sql"]

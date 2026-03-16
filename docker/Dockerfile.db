@@ -1,0 +1,22 @@
+# Dockerfile.db
+# Standalone PostgreSQL 17 image with MIMIC-IV defaults and tuned memory settings.
+#
+# Build:
+#   docker build -f docker/Dockerfile.db -t mimic-db .
+#
+# Run:
+#   docker run -d --name mimic_postgres \
+#     -p 5432:5432 \
+#     -v "$(pwd)/data/db:/var/lib/postgresql/data" \
+#     mimic-db
+
+FROM postgres:17
+
+ENV POSTGRES_DB=mimiciv \
+    POSTGRES_USER=mimicuser \
+    POSTGRES_PASSWORD=mimicpass \
+    POSTGRES_INITDB_ARGS="-E UTF8"
+
+EXPOSE 5432
+
+CMD ["postgres", "-c", "shared_buffers=256MB", "-c", "work_mem=64MB", "-c", "maintenance_work_mem=128MB", "-c", "max_wal_size=2GB", "-c", "dynamic_shared_memory_type=mmap"]

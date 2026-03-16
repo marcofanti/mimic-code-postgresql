@@ -1,0 +1,28 @@
+# Dockerfile.verify
+# One-shot image that prints row counts for every table across all MIMIC-IV schemas.
+# Exits non-zero if any table is empty.
+#
+# Build:
+#   docker build -f docker/Dockerfile.verify -t mimic-verify .
+#
+# Run:
+#   docker run --rm \
+#     -e POSTGRES_HOST=<db-host> \
+#     -e POSTGRES_USER=mimicuser \
+#     -e POSTGRES_PASSWORD=mimicpass \
+#     -e POSTGRES_DB=mimiciv \
+#     mimic-verify
+
+FROM python:3.11-slim
+
+RUN pip install --no-cache-dir psycopg[binary]
+
+WORKDIR /app
+COPY verify.py /app/
+
+ENV POSTGRES_HOST=localhost \
+    POSTGRES_USER=mimicuser \
+    POSTGRES_PASSWORD=mimicpass \
+    POSTGRES_DB=mimiciv
+
+CMD ["python", "verify.py"]

@@ -1,0 +1,20 @@
+# Dockerfile.adminer
+# Lightweight web-based database admin UI (Adminer).
+#
+# Build:
+#   docker build -f docker/Dockerfile.adminer -t mimic-adminer .
+#
+# Run:
+#   docker run -d --name mimic_adminer \
+#     -p 28080:8080 \
+#     -e ADMINER_DEFAULT_SERVER=<db-host> \
+#     mimic-adminer
+#
+# Then open: http://localhost:28080
+
+FROM adminer:latest
+
+ENV ADMINER_DEFAULT_SERVER=localhost \
+    ADMINER_DESIGN=pepa-linha
+
+EXPOSE 8080

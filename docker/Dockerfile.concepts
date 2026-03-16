@@ -1,0 +1,27 @@
+# Dockerfile.concepts
+# One-shot image that creates derived MIMIC-IV concept views (mimiciv_derived schema).
+# Copies the full postgres/ SQL tree so relative \i includes resolve correctly.
+# Run after mimic-loader has completed successfully.
+#
+# Build:
+#   docker build -f docker/Dockerfile.concepts -t mimic-concepts .
+#
+# Run:
+#   docker run --rm \
+#     -e PGHOST=<db-host> \
+#     -e PGUSER=mimicuser \
+#     -e PGPASSWORD=mimicpass \
+#     -e PGDATABASE=mimiciv \
+#     mimic-concepts
+
+FROM postgres:17
+
+ENV PGHOST=localhost \
+    PGUSER=mimicuser \
+    PGPASSWORD=mimicpass \
+    PGDATABASE=mimiciv
+
+COPY postgres/ /postgres/
+WORKDIR /postgres
+
+CMD ["psql", "-v", "ON_ERROR_STOP=1", "-f", "run_all_concepts.sql"]

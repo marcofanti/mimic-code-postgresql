@@ -1,0 +1,26 @@
+# Dockerfile.schema-note
+# One-shot image that creates the mimiciv_note schema
+# (discharge, radiology, discharge_detail, radiology_detail tables).
+#
+# Build:
+#   docker build -f docker/Dockerfile.schema-note -t mimic-schema-note .
+#
+# Run:
+#   docker run --rm \
+#     -e PGHOST=<db-host> \
+#     -e PGUSER=mimicuser \
+#     -e PGPASSWORD=mimicpass \
+#     -e PGDATABASE=mimiciv \
+#     mimic-schema-note
+
+FROM postgres:17
+
+ENV PGHOST=localhost \
+    PGUSER=mimicuser \
+    PGPASSWORD=mimicpass \
+    PGDATABASE=mimiciv
+
+COPY postgres_build_note/create.sql /app/create.sql
+WORKDIR /app
+
+CMD ["psql", "-f", "create.sql"]

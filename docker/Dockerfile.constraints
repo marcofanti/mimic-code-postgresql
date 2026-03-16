@@ -1,0 +1,26 @@
+# Dockerfile.constraints
+# One-shot image that adds foreign keys and constraints to MIMIC-IV tables.
+# Run after mimic-indexer has completed successfully.
+#
+# Build:
+#   docker build -f docker/Dockerfile.constraints -t mimic-constraints .
+#
+# Run:
+#   docker run --rm \
+#     -e PGHOST=<db-host> \
+#     -e PGUSER=mimicuser \
+#     -e PGPASSWORD=mimicpass \
+#     -e PGDATABASE=mimiciv \
+#     mimic-constraints
+
+FROM postgres:17
+
+ENV PGHOST=localhost \
+    PGUSER=mimicuser \
+    PGPASSWORD=mimicpass \
+    PGDATABASE=mimiciv
+
+COPY postgres_buid/constraint.sql /app/constraint.sql
+WORKDIR /app
+
+CMD ["psql", "-f", "constraint.sql"]

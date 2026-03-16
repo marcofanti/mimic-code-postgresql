@@ -1,0 +1,31 @@
+# Dockerfile.loader
+# One-shot image that loads MIMIC-IV compressed CSV files into PostgreSQL.
+# Tables already containing rows are skipped (safe to re-run).
+#
+# Build:
+#   docker build -f docker/Dockerfile.loader -t mimic-loader .
+#
+# Run:
+#   docker run --rm \
+#     -e POSTGRES_HOST=<db-host> \
+#     -e POSTGRES_USER=mimicuser \
+#     -e POSTGRES_PASSWORD=mimicpass \
+#     -e POSTGRES_DB=mimiciv \
+#     -v "$(pwd)/data/core:/input/core:ro" \
+#     -v "$(pwd)/data/hosp:/input/hosp:ro" \
+#     -v "$(pwd)/data/icu:/input/icu:ro" \
+#     mimic-loader
+
+FROM python:3.11-slim
+
+RUN pip install --no-cache-dir psycopg[binary]
+
+WORKDIR /app
+COPY load_data.py limits.json /app/
+
+ENV POSTGRES_HOST=localhost \
+    POSTGRES_USER=mimicuser \
+    POSTGRES_PASSWORD=mimicpass \
+    POSTGRES_DB=mimiciv
+
+CMD ["python", "-u", "load_data.py"]

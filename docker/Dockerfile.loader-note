@@ -1,0 +1,29 @@
+# Dockerfile.loader-note
+# One-shot image that loads MIMIC-IV-Note CSV files (discharge, radiology, etc.)
+# into the mimiciv_note schema via PostgreSQL \COPY.
+# Run after mimic-schema-note has completed successfully.
+#
+# Build:
+#   docker build -f docker/Dockerfile.loader-note -t mimic-loader-note .
+#
+# Run:
+#   docker run --rm \
+#     -e PGHOST=<db-host> \
+#     -e PGUSER=mimicuser \
+#     -e PGPASSWORD=mimicpass \
+#     -e PGDATABASE=mimiciv \
+#     -v "$(pwd)/data/note:/data/note:ro" \
+#     mimic-loader-note
+
+FROM postgres:17
+
+ENV PGHOST=localhost \
+    PGUSER=mimicuser \
+    PGPASSWORD=mimicpass \
+    PGDATABASE=mimiciv
+
+COPY postgres_build_note/load_gz.sql /app/load_gz.sql
+WORKDIR /app
+
+# mimic_data_dir must point to the bind-mounted note data directory
+CMD ["psql", "-v", "ON_ERROR_STOP=1", "-v", "mimic_data_dir=/data/note", "-f", "load_gz.sql"]
