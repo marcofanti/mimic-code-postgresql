@@ -1,8 +1,8 @@
 # MIMIC-IV PostgreSQL Setup Tutorial
 
-This tutorial walks through loading the full MIMIC-IV dataset into a local PostgreSQL 17
-database running in Docker, using the official MIT-LCP build scripts and an automated
-Python pipeline.
+This tutorial walks through loading the full MIMIC-IV dataset (core, ED, and notes) into
+a local PostgreSQL 17 database running in Docker, using the official MIT-LCP build scripts
+and automated Python pipelines.
 
 ### About the mimic-code repository
 
@@ -18,6 +18,8 @@ components to help researchers navigate MIMIC-IV:
 3. **Tutorials** — Jupyter notebooks demonstrating common analyses.
 
 This tutorial installs component 1 (steps 1–15) and component 2 (steps 16–17).
+A separate notebook (`build_mimic_notes.ipynb`) builds the `mimiciv_note` schema from
+the MIMIC-IV-Note dataset.
 
 ---
 
@@ -28,9 +30,12 @@ This tutorial installs component 1 (steps 1–15) and component 2 (steps 16–17
 3. [Download MIMIC-IV Data](#3-download-mimic-iv-data)
    - 3a. [MIMIC-IV (core)](#3a-mimic-iv-core)
    - 3b. [MIMIC-IV-ED (emergency department)](#3b-mimic-iv-ed-emergency-department)
+   - 3c. [MIMIC-IV-Note (clinical notes)](#3c-mimic-iv-note-clinical-notes)
 4. [Configure Environment](#4-configure-environment)
 5. [Set Up Python Environment (uv)](#5-set-up-python-environment-uv)
 6. [Run the Build Pipeline](#6-run-the-build-pipeline)
+   - 6a. [MIMIC-IV core + ED + Concepts](#6a-mimic-iv-core--ed--concepts)
+   - 6b. [MIMIC-IV-Note schema](#6b-mimic-iv-note-schema)
 7. [Verify the Installation](#7-verify-the-installation)
 8. [Run Integration Tests](#8-run-integration-tests)
 9. [Explore Derived Concepts](#9-explore-derived-concepts)
@@ -104,13 +109,15 @@ After cloning, your directory should contain:
 
 ```
 LearningProject2/
-├── mimic-code/            ← official MIT-LCP build scripts
-│   └── mimic-iv/
-│       └── buildmimic/
-│           └── postgres/  ← create.sql, load_gz.sql, constraint.sql, index.sql, validate.sql
-├── docker/                ← standalone Dockerfiles
-├── build_mimic.py         ← automated pipeline script
-├── .env.local             ← environment variable reference
+├── mimic-code/                  ← official MIT-LCP build scripts
+│   ├── mimic-iv/
+│   │   └── buildmimic/postgres/ ← create.sql, load_gz.sql, constraint.sql, index.sql, validate.sql
+│   └── mimic-iv-note/
+│       └── buildmimic/postgres/ ← create.sql, load_gz.sql, validate.sql
+├── docker/                      ← standalone Dockerfiles
+├── build_mimic.ipynb            ← core + ED + concepts pipeline (steps 1–17)
+├── build_mimic_notes.ipynb      ← MIMIC-IV-Note schema pipeline (steps 1–8)
+├── .env.local                   ← environment variable reference
 └── ...
 ```
 
@@ -154,6 +161,25 @@ mv physionet.org/files/mimic-iv-ed/2.2/ed /path/to/your/mimic-data/ed
 > MIMIC-IV-ED requires separate access approval on PhysioNet even if you already have
 > MIMIC-IV access. Request it at [physionet.org/content/mimic-iv-ed/](https://physionet.org/content/mimic-iv-ed/).
 
+### 3c. MIMIC-IV-Note (clinical notes)
+
+Download the MIMIC-IV-Note 2.2 files. The note pipeline expects the CSV.gz files in a
+`note/` subdirectory under `MIMIC_DATA_DIR`, **or** in the path set by `MIMIC_NOTE_DATA_DIR`.
+
+```bash
+wget -r -N -c -np \
+  --user <your-username> --ask-password \
+  https://physionet.org/files/mimic-iv-note/2.2/
+
+# Place the note/ directory under your existing MIMIC_DATA_DIR (preferred)
+mv physionet.org/files/mimic-iv-note/2.2/note /path/to/your/mimic-data/note
+
+# Alternative: set MIMIC_NOTE_DATA_DIR to any directory containing the note CSV.gz files
+```
+
+> MIMIC-IV-Note requires separate access approval. Request it at
+> [physionet.org/content/mimic-iv-note/](https://physionet.org/content/mimic-iv-note/).
+
 ### Expected directory structure
 
 After both downloads, your data directory must contain:
@@ -170,13 +196,18 @@ After both downloads, your data directory must contain:
 │   ├── chartevents.csv.gz
 │   ├── icustays.csv.gz
 │   └── ... (all icu module files)
-└── ed/
-    ├── edstays.csv.gz
-    ├── diagnosis.csv.gz
-    ├── triage.csv.gz
-    ├── vitalsign.csv.gz
-    ├── medrecon.csv.gz
-    └── pyxis.csv.gz
+├── ed/
+│   ├── edstays.csv.gz
+│   ├── diagnosis.csv.gz
+│   ├── triage.csv.gz
+│   ├── vitalsign.csv.gz
+│   ├── medrecon.csv.gz
+│   └── pyxis.csv.gz
+└── note/                       ← optional; used by build_mimic_notes.ipynb
+    ├── discharge.csv.gz
+    ├── radiology.csv.gz
+    ├── discharge_detail.csv.gz
+    └── radiology_detail.csv.gz
 ```
 
 > Large files to expect: `chartevents.csv.gz` (~14 GB), `labevents.csv.gz` (~3 GB),
@@ -202,6 +233,11 @@ POSTGRES_PASSWORD=your_secure_password_here
 # Required: absolute path to your downloaded MIMIC-IV data
 # This directory must contain hosp/, icu/, and ed/ subdirectories
 MIMIC_DATA_DIR=/absolute/path/to/your/mimic-data
+
+# Optional (for build_mimic_notes.ipynb): note CSV.gz files location
+# Priority 1 — auto-detected if MIMIC_DATA_DIR/note/ exists (no extra config needed)
+# Priority 2 — set this only if the note data lives elsewhere
+# MIMIC_NOTE_DATA_DIR=/path/to/mimic-iv-note/2.2/note
 ```
 
 All other values have sensible defaults and can be left unchanged for a standard setup.
@@ -230,6 +266,8 @@ The dependencies installed are:
 ---
 
 ## 6. Run the Build Pipeline
+
+### 6a. MIMIC-IV core + ED + Concepts
 
 Two equivalent options are available — choose whichever fits your workflow:
 
@@ -309,6 +347,38 @@ docker ps
 # View container logs directly
 docker logs -f mimic_postgres
 ```
+
+### 6b. MIMIC-IV-Note schema
+
+`build_mimic_notes.ipynb` builds the `mimiciv_note` schema independently of the main
+pipeline. Run it after (or alongside) `build_mimic.ipynb` — it reuses the same PostgreSQL
+container and Docker network.
+
+```bash
+uv run jupyter lab build_mimic_notes.ipynb
+```
+
+The notebook executes 8 steps:
+
+| Step | Description | Duration (approx.) |
+|------|-------------|---------------------|
+| 1–5 | Docker / DB setup (skipped if already running) | Instant |
+| 6. Create `mimiciv_note` schema + tables | `mimic-iv-note create.sql` | ~5 s |
+| 7. Load note data | `mimic-iv-note load_gz.sql` | ~30–90 min |
+| 8. Validate row counts | `mimic-iv-note validate.sql` | ~1 min |
+
+**Note data directory resolution** (step 7 checks in this order):
+1. `MIMIC_DATA_DIR/note/` — used automatically if it exists (no extra config needed)
+2. `MIMIC_NOTE_DATA_DIR` — explicit override; set this if note data lives elsewhere
+
+The four tables created are:
+
+| Table | Rows (full dataset) |
+|-------|---------------------|
+| `mimiciv_note.discharge` | 331,793 |
+| `mimiciv_note.radiology` | 2,321,355 |
+| `mimiciv_note.discharge_detail` | 186,138 |
+| `mimiciv_note.radiology_detail` | 6,046,121 |
 
 ---
 
@@ -669,6 +739,19 @@ Expected ED subdirectory '/path/to/mimic-data/ed' not found.
 
 The pipeline expects MIMIC-IV-ED files at `MIMIC_DATA_DIR/ed/`. Download the ED dataset
 and place the `.csv.gz` files there (see [section 3b](#3b-mimic-iv-ed-emergency-department)).
+
+### Note data directory not found
+
+```
+Could not locate note data directory. Set one of:
+  MIMIC_DATA_DIR  to a path whose note/ subdirectory contains the note CSV.gz files, or
+  MIMIC_NOTE_DATA_DIR  to the directory containing the note CSV.gz files directly.
+```
+
+`build_mimic_notes.ipynb` first checks `MIMIC_DATA_DIR/note/`; if that directory does not
+exist it falls back to `MIMIC_NOTE_DATA_DIR`. Either place the note CSV.gz files at
+`MIMIC_DATA_DIR/note/` (see [section 3c](#3c-mimic-iv-note-clinical-notes)) or set
+`MIMIC_NOTE_DATA_DIR` explicitly in `.env`.
 
 ### Concepts script not found
 

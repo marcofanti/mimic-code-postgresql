@@ -1,0 +1,32 @@
+# Hidden directories (exclude .gitignore and .env.local)
+.*
+!.gitignore
+!.env.local
+
+# SQL schema/build directories (not tracked yet)
+postgres/
+postgres_buid/
+postgres_build_note/
+
+# Data directories
+data/
+
+# AI assistant config files
+Claude*
+Gemini*
+
+# Third-party repos
+mimic-code/
+
+# Local working files
+track.md
+build_mimic.log
+
+# Generated notebook exports
+build_mimic.html
+build_mimic.pdf
+
+# Old files staging directory
+oldfiles_delete/
+
+drafts/
